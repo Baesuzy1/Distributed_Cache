@@ -1,0 +1,10 @@
+{
+  "name": "distributed-cache",
+  "private": true,
+  "workspaces": [
+    "ring",
+    "cache-node",
+    "demo-app",
+    "benchmark"
+  ]
+}
