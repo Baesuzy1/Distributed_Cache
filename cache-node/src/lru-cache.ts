@@ -105,4 +105,11 @@ export class LRUCache {
     if (this.sweeper) clearInterval(this.sweeper);
     this.sweeper = null;
   }
+    delete(key: string): boolean {
+    const node = this.map.get(key);
+    if (!node) return false;      // nothing to delete
+    this.removeNode(node);
+    this.map.delete(key);         // both places, as always
+    return true;
+  }
 }
