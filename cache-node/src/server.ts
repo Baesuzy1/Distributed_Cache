@@ -37,6 +37,10 @@ const server = http.createServer((req, res) => {
       });
       return;
     }
+    if(req.method === "DELETE"){
+      const removed = cache.delete(key);
+      return send(res, removed ? 200:404 , removed?"deleted" : "miss");
+    }
   }
 
   send(res, 404, "not found");
