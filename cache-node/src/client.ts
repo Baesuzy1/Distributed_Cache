@@ -7,11 +7,20 @@ export class CacheClient {
     return `http://${node.host}:${node.port}/cache/${encodeURIComponent(key)}`;
   }
 
+  // Knock on a shelf's door. If nobody answers (or too slowly), return nothing.
+  private async request(url: string, init: RequestInit = {}): Promise<Response | undefined> {
+    try {
+      return await fetch(url, { ...init, signal: AbortSignal.timeout(500) });
+    } catch {
+      return undefined;
+    }
+  }
+
   async get(key: string): Promise<string | undefined> {
-    const node = this.ring.getNode(key);          // 1. ask the signboard
+    const node = this.ring.getNode(key);
     if (!node) return undefined;
-    const res = await fetch(this.urlFor(node, key));   // 2. go to that shelf
-    if (res.status === 404) return undefined;     // a miss
+    const res = await this.request(this.urlFor(node, key));
+    if (!res || res.status !== 200) return undefined;   // dead shelf or a plain miss
     return await res.text();
   }
 
@@ -19,12 +28,13 @@ export class CacheClient {
     const node = this.ring.getNode(key);
     if (!node) return;
     const query = ttlMs !== undefined ? `?ttl=${ttlMs}` : "";
-    await fetch(this.urlFor(node, key) + query, { method: "PUT", body: value });
+    await this.request(this.urlFor(node, key) + query, { method: "PUT", body: value });
   }
-    async delete(key: string): Promise<boolean> {
+
+  async delete(key: string): Promise<boolean> {
     const node = this.ring.getNode(key);
     if (!node) return false;
-    const res = await fetch(this.urlFor(node, key), { method: "DELETE" });
-    return res.status === 200;
+    const res = await this.request(this.urlFor(node, key), { method: "DELETE" });
+    return res?.status === 200;
   }
 }
