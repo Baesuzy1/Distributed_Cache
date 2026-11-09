@@ -2,7 +2,8 @@ import http from "node:http";
 import { LRUCache } from "./lru-cache";
 
 const port = Number(process.argv[2] ?? 4001);
-const cache = new LRUCache(1000);
+const capacity = Number(process.argv[3] ?? 1000);
+const cache = new LRUCache(capacity);
 cache.startSweeper(5000);
 
 function send(res: http.ServerResponse, status: number, body: string): void {

@@ -7,9 +7,19 @@
     "demo-app",
     "benchmark"
   ],
+  "scripts":{
+        "node1": "tsx cache-node/src/server.ts 4001 100",
+        "node2": "tsx cache-node/src/server.ts 4002 100",
+        "node3": "tsx cache-node/src/server.ts 4003 100",
+        "nodes": "concurrently -n n1,n2,n3 \"tsx cache-node/src/server.ts 4001 100\" \"tsx cache-node/src/server.ts 4002 100\" \"tsx cache-node/src/server.ts 4003 100\"",
+        "bench": "tsx benchmark/src/run.ts",
+        "app": "tsx demo-app/src/server.ts"
+  },
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "concurrently": "^10.0.7",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
 }
+

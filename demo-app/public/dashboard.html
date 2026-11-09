@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Distributed Cache Dashboard</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 800px; margin: 30px auto; padding: 0 16px; color: #222; }
+  h1 { font-size: 22px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .card { border: 1px solid #bbb; border-radius: 8px; padding: 12px 16px; min-width: 120px; }
+  .card b { display: block; font-size: 24px; }
+  .up { background: #d9f7d9; }
+  .down { background: #fbd5d5; }
+  button, input { font-size: 15px; padding: 6px 10px; }
+  pre { background: #f2f2f2; padding: 10px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<h1>Distributed Cache Dashboard</h1>
+
+<h3>Cache nodes</h3>
+<div class="row" id="nodes"></div>
+
+<h3>Numbers</h3>
+<div class="row" id="stats"></div>
+
+<h3>Try it</h3>
+<input id="pid" value="1" size="5">
+<button onclick="lookup()">Look up product</button>
+<button onclick="burst()">Send 200 random requests</button>
+<pre id="out">...</pre>
+
+<script>
+async function refresh() {
+  const nodes = await (await fetch("/nodes")).json();
+  document.getElementById("nodes").innerHTML = nodes.map(n =>
+    `<div class="card ${n.up ? "up" : "down"}"><b>${n.id}</b>port ${n.port}<br>${n.up ? "UP" : "DOWN"}</div>`
+  ).join("");
+
+  const s = await (await fetch("/stats")).json();
+  document.getElementById("stats").innerHTML = [
+    ["Hit rate", (s.hitRate * 100).toFixed(1) + "%"],
+    ["Hits", s.hits],
+    ["Misses", s.misses],
+    ["Database trips", s.dbTrips],
+  ].map(([k, v]) => `<div class="card"><b>${v}</b>${k}</div>`).join("");
+}
+
+async function lookup() {
+  const id = document.getElementById("pid").value;
+  const owner = await (await fetch("/owner/product:" + id)).json();
+  const r = await (await fetch("/product/" + id)).json();
+  document.getElementById("out").textContent =
+    JSON.stringify({ ...r, ownedBy: owner && owner.id }, null, 2);
+  refresh();
+}
+
+async function burst() {
+  for (let i = 0; i < 200; i++) {
+    const id = Math.random() < 0.8 ? 1 + Math.floor(Math.random() * 200) : 201 + Math.floor(Math.random() * 800);
+    await fetch("/product/" + id);
+  }
+  refresh();
+}
+
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>

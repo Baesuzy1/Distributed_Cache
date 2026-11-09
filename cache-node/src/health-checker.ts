@@ -51,7 +51,10 @@ export class HealthChecker {
       }
     }
   }
-
+status(): {id: string; port:number; up:boolean }[]{
+  return this.nodes.map((n) => ({id: n.id, port: n.port, up:this.isOnRing.get(n.id) ?? false}));
+  
+}
   start(intervalMs: number): void {
     this.timer = setInterval(() => this.checkAll(), intervalMs);
   }
