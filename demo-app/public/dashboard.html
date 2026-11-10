@@ -1,65 +1,212 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Distributed Cache Dashboard</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 800px; margin: 30px auto; padding: 0 16px; color: #222; }
-  h1 { font-size: 22px; }
-  .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
-  .card { border: 1px solid #bbb; border-radius: 8px; padding: 12px 16px; min-width: 120px; }
-  .card b { display: block; font-size: 24px; }
-  .up { background: #d9f7d9; }
-  .down { background: #fbd5d5; }
-  button, input { font-size: 15px; padding: 6px 10px; }
-  pre { background: #f2f2f2; padding: 10px; border-radius: 6px; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: #e5e7ff;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #3b2a8f 0%, transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, #0e7490 0%, transparent 55%),
+      #0b1020;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 18px 50px; }
+  header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+  h1 { margin: 0; font-size: 26px; }
+  h1 span { background: linear-gradient(90deg, #a78bfa, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .live { font-size: 13px; padding: 6px 12px; border-radius: 99px; background: rgba(34,197,94,.15); color: #86efac; border: 1px solid rgba(34,197,94,.35); }
+  .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 18px; margin-bottom: 18px; }
+  .panel h3 { margin: 0 0 14px; font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; color: #a5b4fc; }
+
+  .nodes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .node { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; border: 1px solid; }
+  .node.up { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.5); box-shadow: 0 0 18px rgba(16,185,129,.25); }
+  .node.down { background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.55); box-shadow: 0 0 18px rgba(239,68,68,.3); }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .up .dot { background: #10b981; }
+  .down .dot { background: #ef4444; }
+  .node small { display: block; color: #9ca3c8; }
+  .node em { margin-left: auto; font-style: normal; font-size: 12px; font-weight: 700; }
+
+  .big { font-size: 54px; font-weight: 800; line-height: 1; margin-bottom: 12px; }
+  .track { height: 10px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
+  .fill { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #22d3ee, #a78bfa); transition: width .4s; }
+  .chart { width: 100%; height: 80px; margin: 14px 0; background: rgba(0,0,0,.2); border-radius: 10px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .tile { background: rgba(0,0,0,.25); border-radius: 10px; padding: 12px; }
+  .tile b { display: block; font-size: 24px; }
+  .tile small { color: #9ca3c8; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  input { background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.18); color: #fff; border-radius: 10px; padding: 10px 12px; font-size: 15px; width: 100px; }
+  .btn { border: 0; cursor: pointer; padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: 14px; color: #fff; background: linear-gradient(135deg, #6366f1, #8b5cf6); transition: transform .1s, filter .1s; }
+  .btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .btn:disabled { opacity: .5; cursor: wait; }
+  .btn.alt { background: linear-gradient(135deg, #0891b2, #22d3ee); color: #04202a; }
+  .btn.warn { background: linear-gradient(135deg, #f59e0b, #f97316); color: #2a1500; }
+
+  #result { min-height: 90px; background: rgba(0,0,0,.25); border-radius: 12px; padding: 14px; }
+  #result h4 { margin: 10px 0 2px; font-size: 20px; }
+  #result p { margin: 2px 0; color: #c7d2fe; }
+  .ms { margin-left: 8px; color: #9ca3c8; }
+  .pill { display: inline-block; padding: 4px 12px; border-radius: 99px; font-weight: 700; font-size: 12px; letter-spacing: 1px; }
+  .pill.cache { background: rgba(16,185,129,.22); color: #6ee7b7; }
+  .pill.database { background: rgba(245,158,11,.22); color: #fcd34d; }
+  .pill.bad { background: rgba(239,68,68,.22); color: #fca5a5; }
+  .pill.upd { background: rgba(139,92,246,.25); color: #c4b5fd; }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 14px; }
+  li .grow { flex: 1; }
+  li small { color: #9ca3c8; }
 </style>
 </head>
 <body>
-<h1>Distributed Cache Dashboard</h1>
+<div class="wrap">
+  <header>
+    <h1><span>Distributed Cache</span> Dashboard</h1>
+    <div class="live" id="live">● live</div>
+  </header>
 
-<h3>Cache nodes</h3>
-<div class="row" id="nodes"></div>
+  <div class="grid">
+    <div>
+      <div class="panel">
+        <h3>Cache shelves</h3>
+        <div class="nodes" id="nodes"></div>
+      </div>
+      <div class="panel">
+        <h3>Hit rate</h3>
+        <div class="big" id="rate">–</div>
+        <div class="track"><div class="fill" id="bar"></div></div>
+        <svg class="chart" viewBox="0 0 300 80" preserveAspectRatio="none">
+          <polyline id="line" fill="none" stroke="#22d3ee" stroke-width="2" vector-effect="non-scaling-stroke" points=""/>
+        </svg>
+        <div class="tiles">
+          <div class="tile"><b id="hits">0</b><small>Hits</small></div>
+          <div class="tile"><b id="misses">0</b><small>Misses</small></div>
+          <div class="tile"><b id="trips">0</b><small>Database trips</small></div>
+        </div>
+      </div>
+    </div>
 
-<h3>Numbers</h3>
-<div class="row" id="stats"></div>
-
-<h3>Try it</h3>
-<input id="pid" value="1" size="5">
-<button onclick="lookup()">Look up product</button>
-<button onclick="burst()">Send 200 random requests</button>
-<pre id="out">...</pre>
+    <div>
+      <div class="panel">
+        <h3>Try it</h3>
+        <div class="controls">
+          <input id="pid" value="1" aria-label="product id">
+          <button class="btn" onclick="lookup($('pid').value)">Look up</button>
+          <button class="btn alt" onclick="lookup(hotId())">Random popular</button>
+          <button class="btn alt" onclick="lookup(coldId())">Random rare</button>
+        </div>
+        <div class="controls">
+          <input id="price" value="999" aria-label="new price">
+          <button class="btn warn" onclick="updatePrice()">Update price</button>
+          <button class="btn" id="burstBtn" onclick="burst()">Send 200 requests</button>
+        </div>
+        <div id="result">Pick a product and press Look up.</div>
+        <small id="burstInfo"></small>
+      </div>
+      <div class="panel">
+        <h3>Recent requests</h3>
+        <ul id="log"></ul>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
-async function refresh() {
-  const nodes = await (await fetch("/nodes")).json();
-  document.getElementById("nodes").innerHTML = nodes.map(n =>
-    `<div class="card ${n.up ? "up" : "down"}"><b>${n.id}</b>port ${n.port}<br>${n.up ? "UP" : "DOWN"}</div>`
-  ).join("");
+const $ = (id) => document.getElementById(id);
+const hotId = () => 1 + Math.floor(Math.random() * 200);
+const coldId = () => 201 + Math.floor(Math.random() * 800);
+const history = [];
+const recent = [];
 
-  const s = await (await fetch("/stats")).json();
-  document.getElementById("stats").innerHTML = [
-    ["Hit rate", (s.hitRate * 100).toFixed(1) + "%"],
-    ["Hits", s.hits],
-    ["Misses", s.misses],
-    ["Database trips", s.dbTrips],
-  ].map(([k, v]) => `<div class="card"><b>${v}</b>${k}</div>`).join("");
+async function getJSON(url, opts) {
+  const r = await fetch(url, opts);
+  return r.json();
 }
 
-async function lookup() {
-  const id = document.getElementById("pid").value;
-  const owner = await (await fetch("/owner/product:" + id)).json();
-  const r = await (await fetch("/product/" + id)).json();
-  document.getElementById("out").textContent =
-    JSON.stringify({ ...r, ownedBy: owner && owner.id }, null, 2);
+async function refresh() {
+  try {
+    const [nodes, s] = await Promise.all([getJSON("/nodes"), getJSON("/stats")]);
+    $("live").textContent = "● live";
+    $("nodes").innerHTML = nodes.map(n => `
+      <div class="node ${n.up ? "up" : "down"}">
+        <span class="dot"></span>
+        <div><b>${n.id}</b><small>port ${n.port}</small></div>
+        <em>${n.up ? "UP" : "DOWN"}</em>
+      </div>`).join("");
+
+    const pct = s.hitRate * 100;
+    $("rate").textContent = pct.toFixed(1) + "%";
+    $("bar").style.width = pct + "%";
+    $("hits").textContent = s.hits;
+    $("misses").textContent = s.misses;
+    $("trips").textContent = s.dbTrips;
+
+    history.push(pct);
+    if (history.length > 60) history.shift();
+    $("line").setAttribute("points",
+      history.map((v, i) => `${(i * 300 / 59).toFixed(1)},${(78 - v * 0.76).toFixed(1)}`).join(" "));
+  } catch (e) {
+    $("live").textContent = "● app offline";
+  }
+}
+
+function addLog(id, source, ms, node) {
+  recent.unshift({ id, source, ms, node });
+  if (recent.length > 10) recent.pop();
+  $("log").innerHTML = recent.map(r => `
+    <li><span class="pill ${r.source}">${r.source.toUpperCase()}</span>
+        <span class="grow">product ${r.id}</span>
+        <small>${r.node} · ${r.ms} ms</small></li>`).join("");
+}
+
+async function lookup(id) {
+  $("pid").value = id;
+  const owner = await getJSON("/owner/product:" + id);
+  const r = await getJSON("/product/" + id);
+  const node = owner ? owner.id : "none";
+  if (r.error) {
+    $("result").innerHTML = `<span class="pill bad">NOT FOUND</span>
+      <p>Product ${id} doesn't exist in the database.</p>
+      <p><small>The ring would still send it to ${node}.</small></p>`;
+  } else {
+    $("result").innerHTML = `<span class="pill ${r.source}">${r.source.toUpperCase()}</span>
+      <span class="ms">${r.ms} ms</span>
+      <h4>${r.product.name}</h4>
+      <p>Price ${r.product.price} · lives on ${node}</p>`;
+    addLog(id, r.source, r.ms, node);
+  }
   refresh();
 }
 
+async function updatePrice() {
+  const id = $("pid").value, v = $("price").value;
+  await getJSON(`/product/${id}/price?value=${encodeURIComponent(v)}`, { method: "POST" });
+  $("result").innerHTML = `<span class="pill upd">PRICE UPDATED</span>
+    <p>Product ${id} now costs ${v}. The old copy was deleted from the cache.</p>
+    <p><small>Look it up: first the database, then the cache.</small></p>`;
+}
+
 async function burst() {
+  $("burstBtn").disabled = true;
+  let fromCache = 0;
   for (let i = 0; i < 200; i++) {
-    const id = Math.random() < 0.8 ? 1 + Math.floor(Math.random() * 200) : 201 + Math.floor(Math.random() * 800);
-    await fetch("/product/" + id);
+    const id = Math.random() < 0.8 ? hotId() : coldId();
+    const r = await getJSON("/product/" + id);
+    if (r.source === "cache") fromCache++;
+    $("burstInfo").textContent = `Sending… ${i + 1}/200`;
+    if (i % 20 === 0) refresh();
   }
+  $("burstInfo").textContent = `Done: ${fromCache} of 200 came from the cache`;
+  $("burstBtn").disabled = false;
   refresh();
 }
 
